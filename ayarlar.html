@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ayarlar</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Navigasyon için değişkenler eklendi */
+        :root { --bg: #000; --card: #111; --text: #fff; --border: #222; --sub: #888; --font: 'Inter', sans-serif; --nav-bg: 0,0,0; }
+        body.light-mode { --bg: #f2f2f7; --card: #fff; --text: #000; --border: #e5e5e5; --nav-bg: 255,255,255; }
+        body.serif-font { --font: 'Georgia', serif; }
+        body.mono-font { --font: 'Courier New', monospace; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font); }
+        body { background: var(--bg); color: var(--text); padding: 25px; padding-bottom: 110px; }
+
+        .profile-card { background: var(--card); border: 1px solid var(--border); padding: 25px; border-radius: 25px; text-align: center; margin-bottom: 25px; }
+        .profile-card img { width: 75px; height: 75px; border-radius: 50%; margin-bottom: 12px; border: 2px solid var(--text); padding: 3px; }
+
+        .menu-title { font-size: 0.65rem; color: var(--sub); text-transform: uppercase; font-weight: 800; margin: 20px 0 10px 10px; }
+        .set-row { display: flex; justify-content: space-between; align-items: center; padding: 18px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; margin-bottom: 10px; }
+        select { background: none; color: var(--text); border: none; font-weight: 700; font-size: 0.9rem; outline: none; }
+
+        .btn-reset { width: 100%; padding: 18px; border-radius: 18px; border: 1px solid #300; background: #100; color: #ff453a; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 10px; }
+
+        /* Nav Arka Planı Dinamik Hale Getirildi */
+        nav { position: fixed; bottom: 0; left:0; width: 100%; background: rgba(var(--nav-bg), 0.85); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 15px 10px 30px 10px; border-top: 1px solid var(--border); }
+        .nav-link { color: var(--sub); text-decoration: none; text-align: center; font-size: 0.65rem; }
+        .nav-link.active { color: var(--text); }
+        .nav-link i { font-size: 1.4rem; display: block; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1 style="font-weight:900; letter-spacing: -1px; margin-bottom:20px;">Ayarlar</h1>
+
+    <div class="profile-card">
+        <img id="u-photo" src="https://via.placeholder.com/100">
+        <h3 id="u-name" style="font-weight:800;">Misafir</h3>
+        <p id="u-id" style="font-size:0.75rem; color:var(--sub); margin-top:5px;">ID: ---</p>
+    </div>
+
+    <p class="menu-title">Tercihler</p>
+    <div class="set-row">
+        <span>Görünüm</span>
+        <select id="t-select" onchange="update()">
+            <option value="dark">Noir (Koyu)</option>
+            <option value="light">Aydınlık</option>
+        </select>
+    </div>
+
+    <div class="set-row">
+        <span>Yazı Tipi</span>
+        <select id="f-select" onchange="update()">
+            <option value="sans">Modern</option>
+            <option value="serif">Klasik</option>
+            <option value="mono">Kod (Mono)</option>
+        </select>
+    </div>
+
+    <p class="menu-title">Sistem & Gizlilik</p>
+    <button class="btn-reset" onclick="resetAll()">
+        <i class="fas fa-trash-can" style="margin-right:8px;"></i> Tüm Verileri Sıfırla
+    </button>
+
+    <nav>
+        <a href="index.html" class="nav-link"><i class="fas fa-cloud"></i><span>HAVA</span></a>
+        <a href="arama.html" class="nav-link"><i class="fas fa-magnifying-glass"></i><span>KEŞFET</span></a>
+        <a href="ayarlar.html" class="nav-link active"><i class="fas fa-user-gear"></i><span>AYARLAR</span></a>
+    </nav>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+
+        function update() {
+            localStorage.setItem('noir_theme', document.getElementById('t-select').value);
+            localStorage.setItem('noir_font', document.getElementById('f-select').value);
+            location.reload();
+        }
+
+        function resetAll() {
+            if(confirm("Tüm ayarların ve arama geçmişin silinecek. Emin misin?")) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+
+        function init() {
+            const t = localStorage.getItem('noir_theme') || 'dark';
+            const f = localStorage.getItem('noir_font') || 'sans';
+            document.getElementById('t-select').value = t;
+            document.getElementById('f-select').value = f;
+
+            if(t==='light') document.body.classList.add('light-mode');
+            if(f==='serif') document.body.classList.add('serif-font');
+            if(f==='mono') document.body.classList.add('mono-font');
+
+            const user = tg.initDataUnsafe?.user;
+            if(user) {
+                document.getElementById('u-name').innerText = user.first_name + " " + (user.last_name || "");
+                document.getElementById('u-id').innerText = "ID: " + user.id;
+                if(user.photo_url) document.getElementById('u-photo').src = user.photo_url;
+            }
+        }
+        init();
+    </script>
+</body>
+</html>
