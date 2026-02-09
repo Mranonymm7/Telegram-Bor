@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Keşfet</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bg: #000; --card: #111; --text: #fff; --border: #222; --sub: #888; --font: 'Inter', sans-serif; }
+        body.light-mode { --bg: #f2f2f7; --card: #fff; --text: #000; --border: #e5e5e5; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font); }
+        body { background: var(--bg); color: var(--text); padding: 25px; }
+
+        .search-container { margin-top: 20px; }
+        .search-box { background: var(--card); border: 1px solid var(--border); border-radius: 18px; display: flex; align-items: center; padding: 5px 15px; margin-bottom: 10px; }
+        .search-box input { background: none; border: none; color: var(--text); padding: 12px; width: 100%; outline: none; font-size: 1rem; }
+        
+        .tip-text { font-size: 0.7rem; color: var(--sub); padding-left: 5px; line-height: 1.4; }
+
+        .history-item { padding: 18px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+
+        nav { position: fixed; bottom: 0; left:0; width: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 15px 10px 30px 10px; border-top: 1px solid var(--border); }
+        .nav-link { color: var(--sub); text-decoration: none; text-align: center; font-size: 0.65rem; }
+        .nav-link.active { color: var(--text); }
+        .nav-link i { font-size: 1.4rem; display: block; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1 style="font-weight:900; letter-spacing: -1px;">Yer Ara</h1>
+    
+    <div class="search-container">
+        <div class="search-box">
+            <i class="fas fa-magnifying-glass" style="color:var(--sub)"></i>
+            <input type="text" id="searchInput" placeholder="Bir yer yazın..." onkeypress="handleSearch(event)">
+        </div>
+        <p class="tip-text">İpucu: Şehir, il, ilçe, eyalet veya köy ismi girilebilir.</p>
+    </div>
+
+    <div id="history-section" style="margin-top:40px;">
+        <div id="search-history"></div>
+    </div>
+
+    <nav>
+        <a href="index.html" class="nav-link"><i class="fas fa-cloud"></i><span>HAVA</span></a>
+        <a href="arama.html" class="nav-link active"><i class="fas fa-magnifying-glass"></i><span>KEŞFET</span></a>
+        <a href="ayarlar.html" class="nav-link"><i class="fas fa-user-gear"></i><span>AYARLAR</span></a>
+    </nav>
+
+    <script>
+        function applyStyle() {
+            const t = localStorage.getItem('noir_theme');
+            if(t === 'light') document.body.classList.add('light-mode');
+        }
+
+        function handleSearch(e) {
+            if(e.key === 'Enter') {
+                const val = e.target.value.trim();
+                if(val) {
+                    let history = JSON.parse(localStorage.getItem('search_history')) || [];
+                    if(!history.includes(val)) history.unshift(val);
+                    localStorage.setItem('search_history', JSON.stringify(history.slice(0, 5)));
+                    window.location.href = `index.html?city=${val}`;
+                }
+            }
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('search_history')) || [];
+            if(history.length === 0) return;
+            
+            document.getElementById('search-history').innerHTML = `
+                <p style="font-size:0.65rem; color:var(--sub); text-transform:uppercase; font-weight:800; margin-bottom:10px;">Son Aramalar</p>
+                ` + history.map(h => `
+                <div class="history-item" onclick="window.location.href='index.html?city=${h}'">
+                    <span style="font-weight:600;">${h}</span>
+                    <i class="fas fa-arrow-right" style="font-size:0.8rem; color:var(--sub)"></i>
+                </div>
+            `).join('');
+        }
+
+        applyStyle();
+        renderHistory();
+    </script>
+</body>
+</html>
