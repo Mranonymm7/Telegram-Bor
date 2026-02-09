@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Noir Weather Pro</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bg: #000; --card: #111; --text: #fff; --border: #222; --sub: #888; --accent: #fff; --font: 'Inter', sans-serif; }
+        body.light-mode { --bg: #f2f2f7; --card: #fff; --text: #000; --border: #e5e5e5; }
+        body.serif-font { --font: 'Georgia', serif; }
+        body.mono-font { --font: 'Courier New', monospace; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font); transition: background 0.3s; }
+        body { background: var(--bg); color: var(--text); padding-bottom: 110px; }
+
+        header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 100; }
+        .user-photo { width: 35px; height: 35px; border-radius: 50%; border: 1px solid var(--border); }
+
+        main { padding: 20px; }
+        .hero { text-align: center; margin: 10px 0 30px 0; }
+        .temp-big { font-size: 6rem; font-weight: 200; letter-spacing: -4px; margin: 5px 0; }
+        
+        .main-visual-icon { font-size: 4.5rem; margin-bottom: 10px; display: block; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); }
+
+        .section-box { background: var(--card); border-radius: 22px; border: 1px solid var(--border); padding: 18px; margin-bottom: 15px; }
+        .section-title { font-size: 0.7rem; color: var(--sub); text-transform: uppercase; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; letter-spacing: 0.8px; font-weight: 700; }
+
+        .info-grid-nx2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .data-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 15px; }
+        .data-label { font-size: 0.65rem; color: var(--sub); text-transform: uppercase; display: block; margin-bottom: 5px; }
+        .data-val { font-size: 1.1rem; font-weight: 700; }
+
+        .aqi-bar { height: 6px; background: linear-gradient(to right, #2ecc71, #f1c40f, #e67e22, #e74c3c, #9b59b6); border-radius: 10px; margin: 15px 0; position: relative; }
+        #aqi-dot { width: 12px; height: 12px; background: #fff; border-radius: 50%; position: absolute; top: -3px; transform: translateX(-50%); box-shadow: 0 0 8px rgba(255,255,255,0.6); }
+
+        nav { position: fixed; bottom: 0; width: 100%; background: rgba(var(--bg), 0.85); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 15px 10px 30px 10px; border-top: 1px solid var(--border); z-index: 1000; }
+        .nav-link { color: var(--sub); text-decoration: none; text-align: center; font-size: 0.65rem; font-weight: 600; cursor: pointer; }
+        .nav-link.active { color: var(--text); }
+        .nav-link i { font-size: 1.4rem; display: block; margin-bottom: 5px; }
+
+        #loader { position: fixed; inset: 0; background: #000; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; }
+        
+        #season-desc { font-size: 0.85rem; line-height: 1.5; color: #bbb; }
+        .season-tag { display: inline-block; background: #222; color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; margin-bottom: 8px; }
+
+        .chart-container { width: 100%; height: 180px; margin-top: 10px; }
+
+        .nearby-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 15px; border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; }
+        .nearby-item:active { background: rgba(255,255,255,0.1); }
+        
+        /* Liste tasarımı için ortak stil */
+        .weather-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .weather-row:last-child { border-bottom: none; }
+        .scrollable-list { max-height: 300px; overflow-y: auto; padding-right: 5px; }
+        .scrollable-list::-webkit-scrollbar { width: 3px; }
+        .scrollable-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+    <span style="letter-spacing: 3px; font-size: 0.7rem; font-weight: 900;">VERİLER GÜNCELLENİYOR</span>
+</div>
+
+<header>
+    <div style="font-weight: 900; font-size: 1.1rem;">Hava Durumu</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span id="tg-name" style="font-size:0.8rem;">---</span>
+        <img id="tg-photo" class="user-photo" src="https://via.placeholder.com/50">
+    </div>
+</header>
+
+<main>
+    <div class="hero">
+        <i id="main-visual-icon" class="fas fa-sun main-visual-icon"></i>
+        <h1 id="city-name" style="font-weight: 800; letter-spacing: -1px;">--</h1>
+        <div id="temp" class="temp-big">--°</div>
+        <p id="condition" style="color:var(--sub); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">--</p>
+    </div>
+
+    <div class="info-grid-nx2" style="margin-bottom: 15px;">
+        <div class="data-card"><span class="data-label"><i class="fas fa-flag"></i> Ülke</span><div id="country-val" class="data-val">--</div></div>
+        <div class="data-card"><span class="data-label"><i class="fas fa-droplet"></i> Nem</span><div id="hum-val" class="data-val">--%</div></div>
+        <div class="data-card"><span class="data-label"><i class="fas fa-wind"></i> Rüzgar</span><div id="wind-val" class="data-val">-- km/s</div></div>
+        <div class="data-card"><span class="data-label"><i class="fas fa-compress-arrows-alt"></i> Basınç</span><div id="pressure-val" class="data-val">-- hPa</div></div>
+        <div class="data-card"><span class="data-label"><i class="fas fa-sun"></i> UV Endeksi</span><div id="uv-val" class="data-val">--</div></div>
+        <div class="data-card"><span class="data-label"><i class="fas fa-language"></i> Ana Dil</span><div id="lang-val" class="data-val">--</div></div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="fas fa-mask"></i> Hava Sağlığı (AQI)</div>
+        <h2 id="aqi-status" style="font-size: 1.2rem;">Analiz Ediliyor</h2>
+        <div class="aqi-bar"><div id="aqi-dot"></div></div>
+        <p id="aqi-desc" style="font-size: 0.75rem; color: var(--sub);"></p>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="fas fa-clock"></i> 24 Saatlik Tahmin</div>
+        <div id="hourly-list" class="scrollable-list"></div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="far fa-calendar-alt"></i> 7 Günlük Tahmin</div>
+        <div id="daily-list"></div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="fas fa-temperature-high"></i> Saatlik Sıcaklık (°C)</div>
+        <div class="chart-container"><canvas id="tempChart"></canvas></div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="fas fa-wind"></i> Saatlik Rüzgar Hızı (km/s)</div>
+        <div class="chart-container"><canvas id="windChart"></canvas></div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="fas fa-droplet"></i> Saatlik Nem Oranı (%)</div>
+        <div class="chart-container"><canvas id="humidityChart"></canvas></div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="fas fa-cloud-showers-heavy"></i> Saatlik Yağış Olasılığı (%)</div>
+        <div class="chart-container"><canvas id="precipChart"></canvas></div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title"><i class="fas fa-location-dot"></i> Yakınındaki Gerçek Yerler</div>
+        <div id="nearby-list"></div>
+    </div>
+</main>
+
+<nav>
+    <div class="nav-link active" onclick="location.reload()"><i class="fas fa-cloud"></i><span>HAVA</span></div>
+    <div class="nav-link" onclick="location.href='arama.html'"><i class="fas fa-magnifying-glass"></i><span>KEŞFET</span></div>
+    <div class="nav-link" onclick="location.href='ayarlar.html'"><i class="fas fa-user-gear"></i><span>AYARLAR</span></div>
+</nav>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    let charts = {};
+    
+    function applyStyle() {
+        const t = localStorage.getItem('noir_theme');
+        const f = localStorage.getItem('noir_font');
+        if(t === 'light') document.body.classList.add('light-mode');
+        if(f === 'serif') document.body.classList.add('serif-font');
+        if(f === 'mono') document.body.classList.add('mono-font');
+    }
+
+    async function init() {
+        applyStyle();
+        tg.expand();
+        const user = tg.initDataUnsafe?.user;
+        if(user) {
+            document.getElementById('tg-name').innerText = user.first_name;
+            if(user.photo_url) document.getElementById('tg-photo').src = user.photo_url;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchCity = urlParams.get('city');
+
+        if(searchCity) {
+            getWeatherForCity(searchCity);
+        } else {
+            try {
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+                getWeather(ipData.latitude, ipData.longitude, ipData.city, ipData.country_name, ipData.languages);
+            } catch(e) { getWeather(41.0082, 28.9784, "İstanbul", "Türkiye", "tr"); }
+        }
+    }
+
+    async function getWeatherForCity(city) {
+        document.getElementById('loader').style.display = 'flex';
+        try {
+            const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=tr`);
+            const geoData = await geo.json();
+            if(geoData.results) {
+                const res = geoData.results[0];
+                getWeather(res.latitude, res.longitude, res.name, res.country, "TR");
+            }
+        } catch(e) { console.error("Arama hatası"); }
+    }
+
+    async function getWeather(lat, lon, name, countryName, langInfo) {
+        document.getElementById('loader').style.display = 'flex';
+        document.getElementById('city-name').innerText = name.toUpperCase();
+        document.getElementById('country-val').innerText = countryName || "--";
+        document.getElementById('lang-val').innerText = "Türkçe";
+        
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,pressure_msl&hourly=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=auto`;
+        const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi`;
+        
+        try {
+            const [wRes, aRes] = await Promise.all([fetch(weatherUrl), fetch(airUrl)]);
+            const wData = await wRes.json();
+            const aData = await aRes.json();
+
+            // Mevcut UI Güncelleme
+            document.getElementById('temp').innerText = Math.round(wData.current.temperature_2m) + "°";
+            document.getElementById('condition').innerText = translate(wData.current.weather_code);
+            document.getElementById('main-visual-icon').className = "fas " + getIco(wData.current.weather_code) + " main-visual-icon";
+            document.getElementById('hum-val').innerText = "%" + wData.current.relative_humidity_2m;
+            document.getElementById('wind-val').innerText = wData.current.wind_speed_10m + " km/s";
+            document.getElementById('pressure-val').innerText = Math.round(wData.current.pressure_msl) + " hPa";
+            document.getElementById('uv-val').innerText = wData.daily.uv_index_max[0];
+
+            // AQI
+            const aqi = aData.current.european_aqi;
+            document.getElementById('aqi-dot').style.left = Math.min(aqi, 100) + "%";
+            const aStatus = document.getElementById('aqi-status');
+            if(aqi <= 20) { aStatus.innerText = "Mükemmel"; aStatus.style.color = "#2ecc71"; }
+            else if(aqi <= 40) { aStatus.innerText = "İyi"; aStatus.style.color = "#f1c40f"; }
+            else { aStatus.innerText = "Orta"; aStatus.style.color = "#e67e22"; }
+            document.getElementById('aqi-desc').innerText = `Hava Kalitesi Endeksi: ${aqi}`;
+
+            // 1. SAATLİK LİSTE OLUŞTURMA (YENİ)
+            let hHtml = '';
+            for(let i=0; i<24; i++) {
+                const timeStr = wData.hourly.time[i].split('T')[1];
+                const tempH = Math.round(wData.hourly.temperature_2m[i]);
+                const codeH = wData.hourly.weather_code[i];
+                hHtml += `<div class="weather-row">
+                    <span style="flex:1; font-weight:600;">${timeStr}</span>
+                    <i class="fas ${getIco(codeH)}" style="flex:1; text-align:center; font-size:1.1rem;"></i>
+                    <span style="flex:1; text-align:right; font-weight:700;">${tempH}°</span>
+                </div>`;
+            }
+            document.getElementById('hourly-list').innerHTML = hHtml;
+
+            // 2. GÜNLÜK LİSTE OLUŞTURMA (MEVCUT)
+            let dHtml = '';
+            for(let i=0; i<7; i++) {
+                const dayName = new Date(wData.daily.time[i]).toLocaleDateString('tr', {weekday:'long'});
+                dHtml += `<div class="weather-row">
+                    <span style="flex:1;">${dayName}</span>
+                    <i class="fas ${getIco(wData.daily.weather_code[i])}" style="flex:1; text-align:center;"></i>
+                    <span style="flex:1; text-align:right;">${Math.round(wData.daily.temperature_2m_max[i])}° / ${Math.round(wData.daily.temperature_2m_min[i])}°</span>
+                </div>`;
+            }
+            document.getElementById('daily-list').innerHTML = dHtml;
+
+            // Grafik Verileri ve Diğer Fonksiyonlar
+            const labels = wData.hourly.time.slice(0, 24).map(t => t.split('T')[1]);
+            updateAllCharts(labels, {
+                temp: wData.hourly.temperature_2m.slice(0, 24),
+                wind: wData.hourly.wind_speed_10m.slice(0, 24),
+                humidity: wData.hourly.relative_humidity_2m.slice(0, 24),
+                precip: wData.hourly.precipitation_probability.slice(0, 24)
+            });
+
+            fetchGercekNearby(lat, lon);
+            document.getElementById('loader').style.display = 'none';
+        } catch(e) { console.error("Veri işleme hatası", e); }
+    }
+
+    async function fetchGercekNearby(lat, lon) {
+        try {
+            const nearbyRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+            const data = await nearbyRes.json();
+            const city = data.address.city || data.address.province || "İstanbul";
+            
+            const searchNear = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=6&language=tr`);
+            const sData = await searchNear.json();
+            
+            let nHtml = '';
+            if(sData.results) {
+                sData.results.slice(1).forEach(loc => {
+                    nHtml += `<div class="nearby-item" onclick="getWeatherForCity('${loc.name}')">
+                        <span><i class="fas fa-location-arrow" style="font-size:0.7rem; color:var(--sub);"></i> ${loc.name}</span>
+                        <div style="font-size:0.8rem; font-weight:bold;">SORGULA <i class="fas fa-chevron-right"></i></div>
+                    </div>`;
+                });
+            }
+            document.getElementById('nearby-list').innerHTML = nHtml;
+        } catch(e) { console.error("Yakın yerler hatası"); }
+    }
+
+    function updateAllCharts(labels, data) {
+        const isLight = document.body.classList.contains('light-mode');
+        const color = isLight ? '#000' : '#fff';
+        const gridColor = isLight ? '#eee' : '#222';
+        const configs = [
+            { id: 'tempChart', data: data.temp, color: '#ff4757', type: 'line', fill: true },
+            { id: 'windChart', data: data.wind, color: '#2e86de', type: 'bar' },
+            { id: 'humidityChart', data: data.humidity, color: '#00d2d3', type: 'line', fill: false },
+            { id: 'precipChart', data: data.precip, color: '#54a0ff', type: 'bar' }
+        ];
+        configs.forEach(cfg => {
+            const ctx = document.getElementById(cfg.id).getContext('2d');
+            if(charts[cfg.id]) charts[cfg.id].destroy();
+            charts[cfg.id] = new Chart(ctx, {
+                type: cfg.type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: cfg.data,
+                        borderColor: cfg.color,
+                        backgroundColor: cfg.type === 'line' ? cfg.color + '22' : cfg.color,
+                        fill: cfg.fill,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: color, font: { size: 9 } }, grid: { display: false } },
+                        y: { ticks: { color: color, font: { size: 9 } }, grid: { color: gridColor } }
+                    }
+                }
+            });
+        });
+    }
+
+    function translate(c) {
+        const m = {0:'Güneşli', 1:'Açık', 2:'Parçalı Bulutlu', 3:'Bulutlu', 45:'Sisli', 61:'Yağmurlu', 71:'Karlı', 95:'Fırtınalı'};
+        return m[c] || 'Bulutlu';
+    }
+    function getIco(c) {
+        if(c==0) return 'fa-sun';
+        if(c<4) return 'fa-cloud-sun';
+        if(c<70) return 'fa-cloud-rain';
+        return 'fa-snowflake';
+    }
+
+    init();
+</script>
+</body>
+</html>
